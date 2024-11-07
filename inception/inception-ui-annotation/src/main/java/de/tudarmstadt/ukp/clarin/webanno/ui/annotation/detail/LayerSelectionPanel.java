@@ -22,11 +22,19 @@ import static de.tudarmstadt.ukp.inception.support.lambda.LambdaBehavior.visible
 import static org.apache.wicket.event.Broadcast.BUBBLE;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Stream;
 
+import de.tudarmstadt.ukp.clarin.webanno.api.annotation.keybindings.KeyBinding;
+import de.tudarmstadt.ukp.inception.editor.state.AnnotatorStateImpl;
+import de.tudarmstadt.ukp.inception.support.lambda.LambdaAjaxLink;
+import de.tudarmstadt.ukp.inception.support.wicket.input.InputBehavior;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.ChoiceRenderer;
 import org.apache.wicket.markup.html.form.DropDownChoice;
+import org.apache.wicket.markup.html.list.ListItem;
+import org.apache.wicket.markup.html.list.ListView;
 import org.apache.wicket.markup.html.panel.GenericPanel;
 import org.apache.wicket.model.CompoundPropertyModel;
 import org.apache.wicket.model.IModel;
@@ -44,6 +52,8 @@ import de.tudarmstadt.ukp.inception.schema.api.config.AnnotationSchemaProperties
 import de.tudarmstadt.ukp.inception.schema.api.feature.FeatureSupportRegistry;
 import de.tudarmstadt.ukp.inception.support.lambda.LambdaAjaxFormComponentUpdatingBehavior;
 import de.tudarmstadt.ukp.inception.support.lambda.LambdaBehavior;
+import wicket.contrib.input.events.EventType;
+import wicket.contrib.input.events.key.KeyType;
 
 public class LayerSelectionPanel
     extends GenericPanel<AnnotatorState>
@@ -73,6 +83,34 @@ public class LayerSelectionPanel
                 .map(layerChoices -> layerChoices.size() > 1) //
                 .orElse(false).getObject() //
                 && getEditorPage().isEditable()));
+
+        List<KeyType> numberKeys = List.of(KeyType.one, KeyType.two, KeyType.three, KeyType.four, KeyType.five, KeyType.six, KeyType.seven, KeyType.eight, KeyType.nine);
+
+        add(new ListView<KeyType>("selectLayerContainer", numberKeys) {
+            private static final long serialVersionUID = 123153345345L;
+
+            @Override
+            protected void populateItem(ListItem<KeyType> aItem) {
+                var key = aItem.getModelObject();
+
+                var link = new LambdaAjaxLink("selectLayer",
+                    t -> selectLayer(t, Integer.parseInt(key.getKeyCode())-1));
+
+                link.add(new InputBehavior(new KeyType[] {key}, EventType.click)
+                {
+                    private static final long serialVersionUID = -43804179695231212L;
+
+                    @Override
+                    protected Boolean getDisable_in_input()
+                    {
+                        return true;
+                    }
+                });
+
+                aItem.add(link);
+            }
+        });
+
     }
 
     public AnnotationPageBase getEditorPage()
@@ -116,6 +154,27 @@ public class LayerSelectionPanel
         selector.add(LambdaAjaxFormComponentUpdatingBehavior.onUpdate("change",
                 this::actionChangeDefaultLayer));
         return selector;
+    }
+
+    private void selectLayer(AjaxRequestTarget aTarget, int layerNumber)
+    {
+        var state = getModelObject();
+
+        var availableLayers = layerSelector.getChoices();
+
+        if (layerNumber > availableLayers.size() - 1) {
+            return;
+        }
+
+        var selectedLayer = availableLayers.get(layerNumber);
+
+        state.setDefaultAnnotationLayer(selectedLayer);
+        state.setSelectedAnnotationLayer(selectedLayer);
+        layerSelector.setModelObject(selectedLayer);
+
+        send(this, BUBBLE, new DefaultLayerChangedEvent(layerSelector.getModelObject()));
+        aTarget.add(layerSelector);
+
     }
 
     private void actionChangeDefaultLayer(AjaxRequestTarget aTarget)
