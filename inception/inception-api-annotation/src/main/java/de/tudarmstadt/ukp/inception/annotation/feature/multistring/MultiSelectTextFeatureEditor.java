@@ -215,6 +215,7 @@ public class MultiSelectTextFeatureEditor
         aBehavior.setOption("open", KendoChoiceDescriptionScriptReference.applyTooltipScript());
         aBehavior.setOption("dataBound",
                 KendoChoiceDescriptionScriptReference.applyTooltipScript());
+        aBehavior.setOption("ignoreCase", false);
     }
 
     @SuppressWarnings("rawtypes")
